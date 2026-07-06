@@ -1,0 +1,404 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── 租户 (Multi-tenant) ───
+model Tenant {
+  id        String     @id @default(cuid())
+  name      String
+  logo      String?
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  users         User[]
+  departments   Department[]
+  positions     Position[]
+  employees     Employee[]
+  attendances   AttendanceRecord[]
+  leaveRequests LeaveRequest[]
+  salaryRecords SalaryRecord[]
+  jobPostings   JobPosting[]
+  candidates    Candidate[]
+  perfCycles    PerformanceCycle[]
+
+  @@map("tenants")
+}
+
+// ─── 用户与认证 ───
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  HR_MANAGER
+  DEPT_MANAGER
+  EMPLOYEE
+}
+
+model User {
+  id            String     @id @default(cuid())
+  tenantId      String     @map("tenant_id")
+  email         String
+  passwordHash  String     @map("password_hash")
+  name          String?
+  role          UserRole   @default(EMPLOYEE)
+  isActive      Boolean    @default(true) @map("is_active")
+  employeeId    String?    @unique @map("employee_id")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+  employee      Employee?  @relation(fields: [employeeId], references: [id])
+  sessions      Session[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ─── 部门 ───
+model Department {
+  id        String       @id @default(cuid())
+  tenantId  String       @map("tenant_id")
+  name      String
+  parentId  String?      @map("parent_id")
+  managerId String?      @unique @map("manager_id")
+  sortOrder Int          @default(0) @map("sort_order")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
+  manager     Employee?     @relation("DepartmentManager", fields: [managerId], references: [id])
+  parent      Department?   @relation("DeptHierarchy", fields: [parentId], references: [id])
+  children    Department[]  @relation("DeptHierarchy")
+  employees   Employee[]
+  positions   Position[]
+  jobPostings  JobPosting[]
+
+  @@map("departments")
+}
+
+// ─── 岗位 ───
+model Position {
+  id        String     @id @default(cuid())
+  tenantId  String     @map("tenant_id")
+  name      String
+  deptId    String     @map("dept_id")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  department   Department    @relation(fields: [deptId], references: [id])
+  employees    Employee[]
+  jobPostings  JobPosting[]
+
+  @@map("positions")
+}
+
+// ─── 员工 ───
+enum EmployeeStatus {
+  ACTIVE
+  PROBATION
+  RESIGNED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model Employee {
+  id              String         @id @default(cuid())
+  tenantId        String         @map("tenant_id")
+  employeeNo      String         @map("employee_no")
+  name            String
+  gender          Gender?
+  phone           String?
+  email           String?
+  idCard          String?        @map("id_card")
+  birthday        DateTime?
+  hireDate        DateTime       @map("hire_date")
+  resignDate      DateTime?      @map("resign_date")
+  status          EmployeeStatus @default(ACTIVE)
+  avatar          String?
+  deptId          String?        @map("dept_id")
+  positionId      String?        @map("position_id")
+  baseSalary      Decimal?       @map("base_salary") @db.Decimal(10, 2)
+  bankAccount     String?        @map("bank_account")
+  bankName        String?        @map("bank_name")
+  socialInsCity   String?        @map("social_ins_city")
+  socialInsNo     String?        @map("social_ins_no")
+  housingFundNo   String?        @map("housing_fund_no")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
+  department      Department?    @relation(fields: [deptId], references: [id])
+  position        Position?      @relation(fields: [positionId], references: [id])
+  user            User?
+  deptManaged     Department?    @relation("DepartmentManager")
+  leaveRequests   LeaveRequest[]
+  attendances     AttendanceRecord[]
+  salaryRecords   SalaryRecord[]
+  performanceKPIs KPI[]
+  reviews         Review[]
+  interviews      Interview[]
+
+  @@unique([tenantId, employeeNo])
+  @@map("employees")
+}
+
+// ─── 考勤 ───
+enum AttendanceType {
+  CLOCK_IN
+  CLOCK_OUT
+  OVERTIME_IN
+  OVERTIME_OUT
+}
+
+model AttendanceRecord {
+  id         String         @id @default(cuid())
+  tenantId   String         @map("tenant_id")
+  employeeId String         @map("employee_id")
+  type       AttendanceType
+  time       DateTime
+  location   String?
+  ipAddress  String?        @map("ip_address")
+  remark     String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  employee   Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId, time])
+  @@map("attendance_records")
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  PERSONAL
+  MARRIAGE
+  MATERNITY
+  BEREAVEMENT
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id         String      @id @default(cuid())
+  tenantId   String      @map("tenant_id")
+  employeeId String      @map("employee_id")
+  type       LeaveType
+  startDate  DateTime    @map("start_date")
+  endDate    DateTime    @map("end_date")
+  days       Decimal     @db.Decimal(3, 1)
+  reason     String?
+  status     LeaveStatus @default(PENDING)
+  approvedBy String?     @map("approved_by")
+  approvedAt DateTime?   @map("approved_at")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  employee   Employee    @relation(fields: [employeeId], references: [id])
+
+  @@map("leave_requests")
+}
+
+// ─── 薪酬 ───
+model SalaryRecord {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  employeeId      String   @map("employee_id")
+  year            Int
+  month           Int
+  baseSalary      Decimal  @map("base_salary") @db.Decimal(10, 2)
+  overtimePay     Decimal  @default(0) @map("overtime_pay") @db.Decimal(10, 2)
+  bonus           Decimal  @default(0) @db.Decimal(10, 2)
+  deduction       Decimal  @default(0) @db.Decimal(10, 2)
+  socialIns       Decimal  @default(0) @map("social_ins") @db.Decimal(10, 2)
+  housingFund     Decimal  @default(0) @map("housing_fund") @db.Decimal(10, 2)
+  tax             Decimal  @default(0) @db.Decimal(10, 2)
+  netSalary       Decimal  @map("net_salary") @db.Decimal(10, 2)
+  isIssued        Boolean  @default(false) @map("is_issued")
+  issuedAt        DateTime? @map("issued_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employee        Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([tenantId, employeeId, year, month])
+  @@map("salary_records")
+}
+
+// ─── 招聘 ───
+enum JobStatus {
+  OPEN
+  CLOSED
+  DRAFT
+}
+
+model JobPosting {
+  id           String     @id @default(cuid())
+  tenantId     String     @map("tenant_id")
+  title        String
+  deptId       String     @map("dept_id")
+  positionId   String     @map("position_id")
+  description  String?
+  requirements String?
+  salaryMin    Int?       @map("salary_min")
+  salaryMax    Int?       @map("salary_max")
+  headcount    Int        @default(1)
+  status       JobStatus  @default(OPEN)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  department   Department @relation(fields: [deptId], references: [id])
+  position     Position   @relation(fields: [positionId], references: [id])
+  candidates   Candidate[]
+
+  @@map("job_postings")
+}
+
+enum CandidateStatus {
+  NEW
+  SCREENING
+  INTERVIEWING
+  OFFERED
+  HIRED
+  REJECTED
+}
+
+model Candidate {
+  id           String          @id @default(cuid())
+  tenantId     String          @map("tenant_id")
+  jobId        String          @map("job_id")
+  name         String
+  phone        String?
+  email        String?
+  resumeUrl    String?         @map("resume_url")
+  source       String?
+  status       CandidateStatus @default(NEW)
+  rating       Int?
+  notes        String?
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  jobPosting   JobPosting      @relation(fields: [jobId], references: [id])
+  interviews   Interview[]
+
+  @@map("candidates")
+}
+
+enum InterviewResult {
+  PASS
+  FAIL
+  PENDING
+}
+
+model Interview {
+  id          String         @id @default(cuid())
+  candidateId String         @map("candidate_id")
+  employeeId  String         @map("employee_id")
+  scheduledAt DateTime       @map("scheduled_at")
+  result      InterviewResult @default(PENDING)
+  feedback    String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  candidate   Candidate      @relation(fields: [candidateId], references: [id])
+  interviewer Employee       @relation(fields: [employeeId], references: [id])
+
+  @@map("interviews")
+}
+
+// ─── 绩效 ───
+enum CycleStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model PerformanceCycle {
+  id         String      @id @default(cuid())
+  tenantId   String      @map("tenant_id")
+  name       String
+  startDate  DateTime    @map("start_date")
+  endDate    DateTime    @map("end_date")
+  status     CycleStatus @default(DRAFT)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  kpis       KPI[]
+  reviews    Review[]
+
+  @@map("performance_cycles")
+}
+
+model KPI {
+  id         String   @id @default(cuid())
+  cycleId    String   @map("cycle_id")
+  employeeId String   @map("employee_id")
+  name       String
+  target     String?
+  weight     Decimal  @db.Decimal(5, 2)
+  score      Decimal? @db.Decimal(5, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  cycle      PerformanceCycle @relation(fields: [cycleId], references: [id])
+  employee   Employee         @relation(fields: [employeeId], references: [id])
+
+  @@map("kpis")
+}
+
+enum ReviewStatus {
+  PENDING
+  SELF_DONE
+  MANAGER_DONE
+  COMPLETED
+}
+
+model Review {
+  id           String       @id @default(cuid())
+  cycleId      String       @map("cycle_id")
+  employeeId   String       @map("employee_id")
+  selfScore    Decimal?     @map("self_score") @db.Decimal(5, 2)
+  selfComment  String?      @map("self_comment")
+  mgrScore     Decimal?     @map("mgr_score") @db.Decimal(5, 2)
+  mgrComment   String?      @map("mgr_comment")
+  status       ReviewStatus @default(PENDING)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  cycle        PerformanceCycle @relation(fields: [cycleId], references: [id])
+  employee     Employee         @relation(fields: [employeeId], references: [id])
+
+  @@unique([cycleId, employeeId])
+  @@map("reviews")
+}

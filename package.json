@@ -1,0 +1,55 @@
+{
+  "name": "hr-saas",
+  "version": "1.0.0",
+  "description": "HR SaaS 平台 - 一体化人力资源管理系统",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
+  },
+  "keywords": [
+    "hr",
+    "saas",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ant-design/icons": "^5.6.1",
+    "@ant-design/nextjs-registry": "^1.0.2",
+    "@ant-design/pro-components": "^2.8.6",
+    "@ant-design/pro-layout": "^7.22.3",
+    "@auth/prisma-adapter": "^2.8.0",
+    "@hookform/resolvers": "^3.10.0",
+    "@prisma/client": "^5.22.0",
+    "@types/node": "^20.17.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "antd": "^5.24.0",
+    "autoprefixer": "^10.5.2",
+    "bcryptjs": "^2.4.3",
+    "dayjs": "^1.11.13",
+    "exceljs": "^4.4.0",
+    "next": "^14.2.35",
+    "next-auth": "^5.0.0-beta.25",
+    "postcss": "^8.5.16",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.54.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.7.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.0"
+  }
+}
