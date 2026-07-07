@@ -95,7 +95,20 @@ function AttendanceRecords() {
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [employees, setEmployees] = useState<{ id: string; name: string; employeeNo: string }[]>([]);
   const [form] = Form.useForm();
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch("/api/employees?pageSize=999&status=ACTIVE");
+      if (res.ok) {
+        const json = await res.json();
+        setEmployees(json.data);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -134,11 +147,13 @@ function AttendanceRecords() {
     setEditingRecord(null);
     form.resetFields();
     form.setFieldsValue({ time: dayjs() });
+    fetchEmployees();
     setEditModalOpen(true);
   };
 
   const handleEdit = (record: AttendanceRecord) => {
     setEditingRecord(record);
+    fetchEmployees();
     form.setFieldsValue({
       ...record,
       time: record.time ? dayjs(record.time) : undefined,
@@ -340,10 +355,18 @@ function AttendanceRecords() {
         <Form form={form} layout="vertical" className="mt-4">
           <Form.Item
             name="employeeId"
-            label="员工 ID"
-            rules={[{ required: true, message: "请输入员工ID" }]}
+            label="员工"
+            rules={[{ required: true, message: "请选择员工" }]}
           >
-            <Input placeholder="输入员工ID" />
+            <Select
+              showSearch
+              placeholder="搜索并选择员工"
+              optionFilterProp="label"
+              options={employees.map((e) => ({
+                label: `${e.name} (${e.employeeNo})`,
+                value: e.id,
+              }))}
+            />
           </Form.Item>
           <Form.Item
             name="type"
@@ -396,7 +419,20 @@ function LeaveRequests() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
+  const [employees, setEmployees] = useState<{ id: string; name: string; employeeNo: string }[]>([]);
   const [form] = Form.useForm();
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch("/api/employees?pageSize=999&status=ACTIVE");
+      if (res.ok) {
+        const json = await res.json();
+        setEmployees(json.data);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -430,11 +466,13 @@ function LeaveRequests() {
   const handleCreate = () => {
     setEditingRequest(null);
     form.resetFields();
+    fetchEmployees();
     setEditModalOpen(true);
   };
 
   const handleEdit = (record: LeaveRequest) => {
     setEditingRequest(record);
+    fetchEmployees();
     form.setFieldsValue({
       ...record,
       startDate: record.startDate ? dayjs(record.startDate) : undefined,
@@ -673,10 +711,18 @@ function LeaveRequests() {
         <Form form={form} layout="vertical" className="mt-4">
           <Form.Item
             name="employeeId"
-            label="员工 ID"
-            rules={[{ required: true, message: "请输入员工ID" }]}
+            label="员工"
+            rules={[{ required: true, message: "请选择员工" }]}
           >
-            <Input placeholder="输入员工ID" />
+            <Select
+              showSearch
+              placeholder="搜索并选择员工"
+              optionFilterProp="label"
+              options={employees.map((e) => ({
+                label: `${e.name} (${e.employeeNo})`,
+                value: e.id,
+              }))}
+            />
           </Form.Item>
           <Row gutter={16}>
             <Col span={12}>

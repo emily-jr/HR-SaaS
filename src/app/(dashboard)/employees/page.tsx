@@ -44,6 +44,17 @@ interface Employee {
   position: { id: string; name: string } | null;
 }
 
+interface Department {
+  id: string;
+  name: string;
+}
+
+interface Position {
+  id: string;
+  name: string;
+  deptId: string;
+}
+
 const statusMap: Record<string, { color: string; label: string }> = {
   ACTIVE: { color: "green", label: "在职" },
   PROBATION: { color: "blue", label: "试用期" },
@@ -65,7 +76,18 @@ export default function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [form] = Form.useForm();
+
+  const fetchOptions = async () => {
+    const [deptRes, posRes] = await Promise.all([
+      fetch("/api/departments"),
+      fetch("/api/positions"),
+    ]);
+    if (deptRes.ok) setDepartments(await deptRes.json());
+    if (posRes.ok) setPositions(await posRes.json());
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -99,11 +121,13 @@ export default function EmployeesPage() {
   const handleCreate = () => {
     setEditingEmployee(null);
     form.resetFields();
+    fetchOptions();
     setEditModalOpen(true);
   };
 
   const handleEdit = (record: Employee) => {
     setEditingEmployee(record);
+    fetchOptions();
     form.setFieldsValue({
       ...record,
       hireDate: record.hireDate ? dayjs(record.hireDate) : undefined,
@@ -344,6 +368,31 @@ export default function EmployeesPage() {
             <Col span={12}>
               <Form.Item name="idCard" label="身份证号">
                 <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="deptId" label="部门">
+                <Select
+                  placeholder="选择部门"
+                  allowClear
+                  options={departments.map((d) => ({ label: d.name, value: d.id }))}
+                  onChange={() => {
+                    form.setFieldValue("positionId", undefined);
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="positionId" label="岗位">
+                <Select
+                  placeholder="选择岗位"
+                  allowClear
+                  options={positions
+                    .filter((p) => !form.getFieldValue("deptId") || p.deptId === form.getFieldValue("deptId"))
+                    .map((p) => ({ label: p.name, value: p.id }))}
+                />
               </Form.Item>
             </Col>
           </Row>

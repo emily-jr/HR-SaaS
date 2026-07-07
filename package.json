@@ -4,7 +4,7 @@
   "description": "HR SaaS 平台 - 一体化人力资源管理系统",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx prisma generate && npx prisma db push && next build",
     "start": "next start",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

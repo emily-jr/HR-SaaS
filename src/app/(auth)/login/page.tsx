@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -11,12 +11,13 @@ import {
   Typography,
   message,
   Space,
+  Spin,
 } from "antd";
 import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,64 @@ export default function LoginPage() {
   };
 
   return (
+    <Form
+      name="login"
+      layout="vertical"
+      onFinish={onFinish}
+      autoComplete="off"
+      size="large"
+      initialValues={{ tenantId: "demo" }}
+    >
+      <Form.Item
+        name="tenantId"
+        label="租户ID"
+        rules={[{ required: true, message: "请输入租户ID" }]}
+      >
+        <Input placeholder="输入租户ID" />
+      </Form.Item>
+
+      <Form.Item
+        name="email"
+        label="邮箱"
+        rules={[
+          { required: true, message: "请输入邮箱" },
+          { type: "email", message: "请输入有效邮箱" },
+        ]}
+      >
+        <Input
+          prefix={<UserOutlined />}
+          placeholder="admin@company.com"
+        />
+      </Form.Item>
+
+      <Form.Item
+        name="password"
+        label="密码"
+        rules={[{ required: true, message: "请输入密码" }]}
+      >
+        <Input.Password
+          prefix={<LockOutlined />}
+          placeholder="输入密码"
+        />
+      </Form.Item>
+
+      <Form.Item>
+        <Button
+          type="primary"
+          htmlType="submit"
+          block
+          loading={loading}
+          icon={<LoginOutlined />}
+        >
+          登录
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <Card
         className="w-full max-w-md shadow-lg"
@@ -64,59 +123,9 @@ export default function LoginPage() {
             <Text type="secondary">一体化人力资源管理系统</Text>
           </div>
 
-          <Form
-            name="login"
-            layout="vertical"
-            onFinish={onFinish}
-            autoComplete="off"
-            size="large"
-            initialValues={{ tenantId: "demo" }}
-          >
-            <Form.Item
-              name="tenantId"
-              label="租户ID"
-              rules={[{ required: true, message: "请输入租户ID" }]}
-            >
-              <Input placeholder="输入租户ID" />
-            </Form.Item>
-
-            <Form.Item
-              name="email"
-              label="邮箱"
-              rules={[
-                { required: true, message: "请输入邮箱" },
-                { type: "email", message: "请输入有效邮箱" },
-              ]}
-            >
-              <Input
-                prefix={<UserOutlined />}
-                placeholder="admin@company.com"
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="password"
-              label="密码"
-              rules={[{ required: true, message: "请输入密码" }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="输入密码"
-              />
-            </Form.Item>
-
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                block
-                loading={loading}
-                icon={<LoginOutlined />}
-              >
-                登录
-              </Button>
-            </Form.Item>
-          </Form>
+          <Suspense fallback={<Spin className="flex justify-center" />}>
+            <LoginForm />
+          </Suspense>
         </Space>
       </Card>
     </div>

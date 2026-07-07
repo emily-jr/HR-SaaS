@@ -654,6 +654,7 @@ function KPIs() {
   const [cycleFilter, setCycleFilter] = useState<string | undefined>();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<KPI | null>(null);
+  const [employees, setEmployees] = useState<{ id: string; name: string; employeeNo: string }[]>([]);
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -680,6 +681,18 @@ function KPIs() {
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch("/api/employees?pageSize=999&status=ACTIVE");
+      if (res.ok) {
+        const json = await res.json();
+        setEmployees(json.data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     fetchCycles();
   }, []);
@@ -692,12 +705,14 @@ function KPIs() {
     setEditingItem(null);
     form.resetFields();
     if (cycleFilter) form.setFieldsValue({ cycleId: cycleFilter });
+    fetchEmployees();
     setEditModalOpen(true);
   };
 
   const handleEdit = (record: KPI) => {
     setEditingItem(record);
     form.setFieldsValue(record);
+    fetchEmployees();
     setEditModalOpen(true);
   };
 
@@ -855,10 +870,18 @@ function KPIs() {
           </Form.Item>
           <Form.Item
             name="employeeId"
-            label="员工 ID"
-            rules={[{ required: true, message: "请输入员工ID" }]}
+            label="员工"
+            rules={[{ required: true, message: "请选择员工" }]}
           >
-            <Input placeholder="输入员工ID" />
+            <Select
+              showSearch
+              placeholder="搜索并选择员工"
+              optionFilterProp="label"
+              options={employees.map((e) => ({
+                label: `${e.name} (${e.employeeNo})`,
+                value: e.id,
+              }))}
+            />
           </Form.Item>
           <Form.Item
             name="name"
